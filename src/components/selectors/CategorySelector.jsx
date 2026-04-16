@@ -3,8 +3,10 @@ export default function CategorySelector({
   allQuestions,
   selectedCategories,
   shuffleChoices,
+  shuffleQuestionsOrder,
   onChange,
   onShuffleChange,
+  onShuffleQuestionsOrderChange,
   onStart,
   onBack,
 }) {
@@ -68,6 +70,20 @@ export default function CategorySelector({
             }}
           >
             Shuffle Choices
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onShuffleQuestionsOrderChange(!shuffleQuestionsOrder)
+            }
+            aria-pressed={shuffleQuestionsOrder}
+            style={{
+              ...secondaryBtn,
+              ...shuffleBtn,
+              ...(shuffleQuestionsOrder ? activeBtn : {}),
+            }}
+          >
+            Shuffle Order
           </button>
         </div>
 

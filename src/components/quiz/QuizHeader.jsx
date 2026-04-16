@@ -4,6 +4,7 @@ export default function QuizHeader({
   current,
   total,
   shuffleChoices,
+  shuffleQuestionsOrder,
   onExit,
 }) {
   return (
@@ -18,6 +19,9 @@ export default function QuizHeader({
         <span>{current + 1}/{total}</span>
         <span style={shuffleChoices ? shuffleOn : shuffleOff}>
           Choices: {shuffleChoices ? "Shuffled" : "Fixed"}
+        </span>
+        <span style={shuffleQuestionsOrder ? shuffleOn : shuffleOff}>
+          Order: {shuffleQuestionsOrder ? "Shuffled" : "Fixed"}
         </span>
       </div>
     </div>

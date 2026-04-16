@@ -112,11 +112,23 @@ function shuffleQuestionChoices(question) {
   };
 }
 
+function shuffleQuestions(questions) {
+  const shuffled = [...questions];
+
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  return shuffled;
+}
+
 export default function QuizScreen() {
   const [step, setStep] = useState("file");
   const [importedFiles, setImportedFiles] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [shuffleChoices, setShuffleChoices] = useState(false);
+  const [shuffleQuestionsOrder, setShuffleQuestionsOrder] = useState(false);
   const [quizSession, setQuizSession] = useState(null);
   const [loadReport, setLoadReport] = useState({
     loadedFiles: 0,
@@ -210,14 +222,18 @@ export default function QuizScreen() {
   };
 
   const handleStartQuiz = () => {
-    const sessionQuestions = shuffleChoices
+    const preparedQuestions = shuffleChoices
       ? questions.map((question) => shuffleQuestionChoices(question))
       : questions;
+    const sessionQuestions = shuffleQuestionsOrder
+      ? shuffleQuestions(preparedQuestions)
+      : preparedQuestions;
 
     setQuizSession({
       id: `${Date.now()}-${sessionQuestions.length}`,
       questions: sessionQuestions,
       shuffleChoices,
+      shuffleQuestionsOrder,
     });
     setStep("quiz");
   };
@@ -250,8 +266,10 @@ export default function QuizScreen() {
         allQuestions={allQuestions}
         selectedCategories={selectedCategories}
         shuffleChoices={shuffleChoices}
+        shuffleQuestionsOrder={shuffleQuestionsOrder}
         onChange={setSelectedCategories}
         onShuffleChange={setShuffleChoices}
+        onShuffleQuestionsOrderChange={setShuffleQuestionsOrder}
         onStart={handleStartQuiz}
         onBack={() => setStep("file")}
       />
@@ -263,6 +281,9 @@ export default function QuizScreen() {
       key={quizSession?.id ?? "quiz"}
       questions={quizSession?.questions ?? questions}
       shuffleChoices={quizSession?.shuffleChoices ?? shuffleChoices}
+      shuffleQuestionsOrder={
+        quizSession?.shuffleQuestionsOrder ?? shuffleQuestionsOrder
+      }
       onFinish={() => setStep("file")}
       onBack={() => setStep("category")}
     />

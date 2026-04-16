@@ -5,7 +5,12 @@ import ExplanationPanel from "./ExplanationPanel";
 import QuizHeader from "./QuizHeader";
 import ComboBar from "./ComboBar";
 
-export default function QuizPlayer({ questions, shuffleChoices, onBack }) {
+export default function QuizPlayer({
+  questions,
+  shuffleChoices,
+  shuffleQuestionsOrder,
+  onBack,
+}) {
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
   const [result, setResult] = useState(null);
@@ -164,6 +169,7 @@ export default function QuizPlayer({ questions, shuffleChoices, onBack }) {
             current={current}
             total={questions.length}
             shuffleChoices={shuffleChoices}
+            shuffleQuestionsOrder={shuffleQuestionsOrder}
             onExit={handleExit}
           />
 
