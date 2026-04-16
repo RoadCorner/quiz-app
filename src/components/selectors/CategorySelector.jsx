@@ -4,14 +4,19 @@ export default function CategorySelector({
   selectedCategories,
   shuffleChoices,
   shuffleQuestionsOrder,
+  answerMode,
+  showTextInputChoices,
   onChange,
   onShuffleChange,
   onShuffleQuestionsOrderChange,
+  onAnswerModeChange,
+  onShowTextInputChoicesChange,
   onStart,
   onBack,
 }) {
   const isAllSelected = selectedCategories.length === 0;
   const categoryCounts = new Map();
+  const visibleCategories = ["All Categories", ...categories];
 
   allQuestions.forEach((question) => {
     categoryCounts.set(
@@ -21,6 +26,11 @@ export default function CategorySelector({
   });
 
   const toggleCategory = (category) => {
+    if (category === "All Categories") {
+      onChange([]);
+      return;
+    }
+
     if (selectedCategories.includes(category)) {
       onChange(selectedCategories.filter((item) => item !== category));
       return;
@@ -50,32 +60,82 @@ export default function CategorySelector({
         </p>
 
         <div style={actions}>
-          <button
-            onClick={() => onChange([])}
-            style={{
-              ...secondaryBtn,
-              ...(isAllSelected ? activeBtn : {}),
-            }}
-          >
-            All Categories ({allQuestions.length})
-          </button>
+          <div style={settingBlock}>
+            <div style={settingCopy}>
+              <div style={settingLabel}>Answer Mode</div>
+              <div style={settingHint}>Multiple choice is the default mode.</div>
+            </div>
+
+            <div
+              style={{
+                ...modeGroup,
+                ...(answerMode === "text-input" ? modeGroupActive : {}),
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => onAnswerModeChange("multiple-choice")}
+                aria-pressed={answerMode === "multiple-choice"}
+                style={{
+                  ...groupBtn,
+                  ...(answerMode === "multiple-choice" ? groupBtnActive : {}),
+                }}
+              >
+                Multiple Choice
+              </button>
+              <button
+                type="button"
+                onClick={() => onAnswerModeChange("text-input")}
+                aria-pressed={answerMode === "text-input"}
+                style={{
+                  ...groupBtn,
+                  ...groupSubBtn,
+                  ...(answerMode === "text-input" ? groupBtnActive : {}),
+                }}
+              >
+                Text Input
+              </button>
+              <button
+                type="button"
+                onClick={() => onShowTextInputChoicesChange(!showTextInputChoices)}
+                aria-pressed={showTextInputChoices}
+                style={{
+                  ...groupBtn,
+                  ...groupSubBtn,
+                  ...(answerMode !== "text-input" ? disabledBtn : {}),
+                  ...(showTextInputChoices && answerMode === "text-input"
+                    ? groupBtnActive
+                    : {}),
+                }}
+                disabled={answerMode !== "text-input"}
+              >
+                {showTextInputChoices ? "Choices Visible" : "Choices Hidden"}
+              </button>
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={() => onShuffleChange(!shuffleChoices)}
+            onClick={() => {
+              if (answerMode !== "text-input") {
+                onShuffleChange(!shuffleChoices);
+              }
+            }}
             aria-pressed={shuffleChoices}
             style={{
               ...secondaryBtn,
               ...shuffleBtn,
+              ...(answerMode === "text-input" ? disabledBtn : {}),
               ...(shuffleChoices ? activeBtn : {}),
             }}
+            disabled={answerMode === "text-input"}
           >
             Shuffle Choices
           </button>
+
           <button
             type="button"
-            onClick={() =>
-              onShuffleQuestionsOrderChange(!shuffleQuestionsOrder)
-            }
+            onClick={() => onShuffleQuestionsOrderChange(!shuffleQuestionsOrder)}
             aria-pressed={shuffleQuestionsOrder}
             style={{
               ...secondaryBtn,
@@ -97,9 +157,14 @@ export default function CategorySelector({
         </div>
 
         <div style={list}>
-          {categories.map((cat) => {
-            const count = categoryCounts.get(cat) ?? 0;
-            const isSelected = selectedCategories.includes(cat);
+          {visibleCategories.map((cat) => {
+            const isAllCategory = cat === "All Categories";
+            const count = isAllCategory
+              ? allQuestions.length
+              : (categoryCounts.get(cat) ?? 0);
+            const isSelected = isAllCategory
+              ? isAllSelected
+              : selectedCategories.includes(cat);
 
             return (
               <button
@@ -190,9 +255,33 @@ const description = {
 const actions = {
   display: "flex",
   flexWrap: "wrap",
-  alignItems: "stretch",
+  alignItems: "flex-end",
   gap: "8px",
   marginBottom: "10px",
+};
+
+const settingBlock = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+};
+
+const settingCopy = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "2px",
+};
+
+const settingLabel = {
+  fontSize: "12px",
+  fontWeight: 700,
+  color: "#e2e8f0",
+  letterSpacing: "0.04em",
+};
+
+const settingHint = {
+  fontSize: "12px",
+  color: "#94a3b8",
 };
 
 const backBtn = {
@@ -225,6 +314,41 @@ const secondaryBtn = {
 const shuffleBtn = {
   minWidth: "150px",
   maxWidth: "200px",
+};
+
+const modeGroup = {
+  display: "flex",
+  alignItems: "stretch",
+  borderRadius: "12px",
+  border: "1px solid #475569",
+  background: "#0f172a",
+  overflow: "hidden",
+};
+
+const modeGroupActive = {
+  borderColor: "#93c5fd",
+  boxShadow: "0 0 0 1px rgba(147, 197, 253, 0.15)",
+};
+
+const groupBtn = {
+  width: "auto",
+  minWidth: "150px",
+  padding: "9px 12px",
+  border: "none",
+  background: "transparent",
+  color: "white",
+  cursor: "pointer",
+  fontSize: "12px",
+  fontWeight: 600,
+};
+
+const groupSubBtn = {
+  minWidth: "170px",
+  borderLeft: "1px solid rgba(100, 116, 139, 1)",
+};
+
+const groupBtnActive = {
+  background: "#2563eb",
 };
 
 const status = {
@@ -292,6 +416,11 @@ const countBadge = {
 const activeBtn = {
   background: "#2563eb",
   borderColor: "#93c5fd",
+};
+
+const disabledBtn = {
+  opacity: 0.45,
+  cursor: "not-allowed",
 };
 
 const startBtn = {

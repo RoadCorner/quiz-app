@@ -136,7 +136,7 @@ export default function FileSelector({
                     </div>
                     <button
                       type="button"
-                      aria-label={`${file.name} を削除`}
+                      aria-label={`Remove ${file.name}`}
                       onClick={(event) => {
                         event.stopPropagation();
                         onRemoveFile(file.id);

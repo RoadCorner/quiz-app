@@ -10,21 +10,21 @@ export default function ExplanationPanel({ result, bonus, q }) {
           +{bonus} Speed Bonus
         </p>
       )}
-          
-      <p>Correct: {q.choices[q.answer]}</p>
+
+      <p>Correct Answer: {q.choices[q.answer]}</p>
 
       {q.explanation && (
         <>
           <div style={correct}>
-            <strong>✔ Why Correct</strong>
+            <strong>Why This Is Correct</strong>
             <p>{q.explanation.correct}</p>
           </div>
 
           <div style={wrong}>
-            <strong>✖ Why Others Are Wrong</strong>
+            <strong>Why the Other Choices Are Wrong</strong>
             <ul>
-              {q.explanation.incorrect?.map((e, i) => (
-                <li key={i}>{e}</li>
+              {q.explanation.incorrect?.map((entry, index) => (
+                <li key={index}>{entry}</li>
               ))}
             </ul>
           </div>

@@ -129,6 +129,8 @@ export default function QuizScreen() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [shuffleChoices, setShuffleChoices] = useState(false);
   const [shuffleQuestionsOrder, setShuffleQuestionsOrder] = useState(false);
+  const [answerMode, setAnswerMode] = useState("multiple-choice");
+  const [showTextInputChoices, setShowTextInputChoices] = useState(true);
   const [quizSession, setQuizSession] = useState(null);
   const [loadReport, setLoadReport] = useState({
     loadedFiles: 0,
@@ -222,7 +224,8 @@ export default function QuizScreen() {
   };
 
   const handleStartQuiz = () => {
-    const preparedQuestions = shuffleChoices
+    const shouldShuffleChoices = answerMode === "multiple-choice" && shuffleChoices;
+    const preparedQuestions = shouldShuffleChoices
       ? questions.map((question) => shuffleQuestionChoices(question))
       : questions;
     const sessionQuestions = shuffleQuestionsOrder
@@ -232,8 +235,10 @@ export default function QuizScreen() {
     setQuizSession({
       id: `${Date.now()}-${sessionQuestions.length}`,
       questions: sessionQuestions,
-      shuffleChoices,
+      shuffleChoices: shouldShuffleChoices,
       shuffleQuestionsOrder,
+      answerMode,
+      showTextInputChoices,
     });
     setStep("quiz");
   };
@@ -267,9 +272,20 @@ export default function QuizScreen() {
         selectedCategories={selectedCategories}
         shuffleChoices={shuffleChoices}
         shuffleQuestionsOrder={shuffleQuestionsOrder}
+        answerMode={answerMode}
+        showTextInputChoices={showTextInputChoices}
         onChange={setSelectedCategories}
         onShuffleChange={setShuffleChoices}
         onShuffleQuestionsOrderChange={setShuffleQuestionsOrder}
+        onAnswerModeChange={(mode) => {
+          setAnswerMode(mode);
+
+          if (mode === "text-input") {
+            setShuffleChoices(false);
+            setShowTextInputChoices(true);
+          }
+        }}
+        onShowTextInputChoicesChange={setShowTextInputChoices}
         onStart={handleStartQuiz}
         onBack={() => setStep("file")}
       />
@@ -283,6 +299,10 @@ export default function QuizScreen() {
       shuffleChoices={quizSession?.shuffleChoices ?? shuffleChoices}
       shuffleQuestionsOrder={
         quizSession?.shuffleQuestionsOrder ?? shuffleQuestionsOrder
+      }
+      answerMode={quizSession?.answerMode ?? answerMode}
+      showTextInputChoices={
+        quizSession?.showTextInputChoices ?? showTextInputChoices
       }
       onFinish={() => setStep("file")}
       onBack={() => setStep("category")}

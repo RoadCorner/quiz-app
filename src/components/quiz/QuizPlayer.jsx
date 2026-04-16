@@ -4,13 +4,42 @@ import ChoicesList from "./ChoicesList";
 import ExplanationPanel from "./ExplanationPanel";
 import QuizHeader from "./QuizHeader";
 import ComboBar from "./ComboBar";
+import TextAnswerInput from "./TextAnswerInput";
+
+function normalizeAnswerText(value) {
+  return value
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()?"'[\]\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resolveTypedChoiceIndex(input, choices) {
+  const normalizedInput = normalizeAnswerText(input);
+
+  if (!normalizedInput) {
+    return null;
+  }
+
+  const matches = choices.reduce((indices, choice, index) => {
+    if (normalizeAnswerText(choice) === normalizedInput) {
+      indices.push(index);
+    }
+
+    return indices;
+  }, []);
+
+  return matches.length === 1 ? matches[0] : null;
+}
 
 function createSessionState(sessionQuestions, reviewMode = false) {
   return {
     activeQuestions: sessionQuestions,
     current: 0,
     selected: null,
+    typedAnswer: "",
     result: null,
+    inputFeedback: "",
     score: 0,
     streak: 0,
     correctCount: 0,
@@ -29,6 +58,8 @@ export default function QuizPlayer({
   questions,
   shuffleChoices,
   shuffleQuestionsOrder,
+  answerMode,
+  showTextInputChoices,
   onBack,
 }) {
   const [session, setSession] = useState(() => createSessionState(questions));
@@ -38,7 +69,9 @@ export default function QuizPlayer({
     activeQuestions,
     current,
     selected,
+    typedAnswer,
     result,
+    inputFeedback,
     score,
     streak,
     correctCount,
@@ -126,14 +159,31 @@ export default function QuizPlayer({
   };
 
   const check = () => {
-    if (result !== null || selected === null || !q) return;
+    if (result !== null || !q) return;
 
-    if (selected === q.answer) {
+    const resolvedSelected =
+      answerMode === "text-input"
+        ? resolveTypedChoiceIndex(typedAnswer, q.choices)
+        : selected;
+
+    if (answerMode === "text-input" && resolvedSelected === null) {
+      setSession((prev) => ({
+        ...prev,
+        inputFeedback: "Enter one of the listed choices to check your answer.",
+      }));
+      return;
+    }
+
+    if (resolvedSelected === null) return;
+
+    if (resolvedSelected === q.answer) {
       const speedBonus = Math.max(0, 20 - Math.floor(time / 5));
 
       setSession((prev) => ({
         ...prev,
+        selected: resolvedSelected,
         result: "Correct!",
+        inputFeedback: "",
         score: prev.score + 1 + speedBonus,
         correctCount: prev.correctCount + 1,
         bonus: speedBonus,
@@ -154,7 +204,9 @@ export default function QuizPlayer({
     } else {
       setSession((prev) => ({
         ...prev,
+        selected: resolvedSelected,
         result: "Wrong",
+        inputFeedback: "",
         streak: 0,
         anim: "shake",
         flash: "wrong",
@@ -184,7 +236,9 @@ export default function QuizPlayer({
       ...prev,
       current: prev.current + 1,
       selected: null,
+      typedAnswer: "",
       result: null,
+      inputFeedback: "",
       time: 0,
       bonus: 0,
       anim: "",
@@ -236,6 +290,8 @@ export default function QuizPlayer({
             total={activeQuestions.length}
             shuffleChoices={shuffleChoices}
             shuffleQuestionsOrder={shuffleQuestionsOrder}
+            answerMode={answerMode}
+            showTextInputChoices={showTextInputChoices}
             onExit={handleExit}
           />
 
@@ -247,27 +303,58 @@ export default function QuizPlayer({
             </h3>
           </div>
 
-          <ChoicesList
-            choices={q.choices}
-            selected={selected}
-            result={result}
-            answer={q.answer}
-            onSelect={(value) => {
-              setSession((prev) => ({
-                ...prev,
-                selected: value,
-              }));
-            }}
-          />
+          {answerMode === "text-input" && showTextInputChoices ? (
+            <ChoicesList
+              choices={q.choices}
+              selected={selected}
+              result={result}
+              answer={q.answer}
+              onSelect={() => {}}
+              interactive={false}
+            />
+          ) : answerMode === "text-input" ? null : (
+            <ChoicesList
+              choices={q.choices}
+              selected={selected}
+              result={result}
+              answer={q.answer}
+              onSelect={(value) => {
+                setSession((prev) => ({
+                  ...prev,
+                  selected: value,
+                }));
+              }}
+            />
+          )}
         </div>
 
         <div style={right}>
           <ExplanationPanel result={result} bonus={bonus} q={q} />
 
-          <div style={{ marginTop: "auto" }}>
+          <div style={actionArea}>
+            {answerMode === "text-input" ? (
+              <TextAnswerInput
+                value={typedAnswer}
+                onChange={(value) => {
+                  setSession((prev) => ({
+                    ...prev,
+                    typedAnswer: value,
+                    inputFeedback: "",
+                  }));
+                }}
+                onSubmit={check}
+              disabled={result !== null}
+              feedback={inputFeedback}
+            />
+            ) : null}
+
             <button
               onClick={() => (!result ? check() : next())}
-              disabled={selected === null && result === null}
+              disabled={
+                answerMode === "text-input"
+                  ? typedAnswer.trim().length === 0 && result === null
+                  : selected === null && result === null
+              }
               style={mainBtn}
             >
               {result ? "Next" : "Check"}
@@ -348,6 +435,13 @@ const mainBtn = {
   color: "white",
   border: "none",
   cursor: "pointer",
+};
+
+const actionArea = {
+  marginTop: "auto",
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
 };
 
 const flashCorrect = {

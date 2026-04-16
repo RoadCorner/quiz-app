@@ -45,12 +45,15 @@ export default function ResultScreen({
           <p>Accuracy: {accuracy}%</p>
 
           {!exited && reviewCount > 0 && (
-            <p style={reviewText}>間違えた {reviewCount} 問を復習できます。</p>
+            <p style={reviewText}>
+              You can review {reviewCount} missed question
+              {reviewCount === 1 ? "" : "s"}.
+            </p>
           )}
 
           {exited && (
             <p style={exitText}>
-              全 {fullTotal} 問中、{total} 問回答した時点で終了しました。
+              You ended the quiz after answering {total} of {fullTotal} questions.
             </p>
           )}
         </div>
@@ -68,7 +71,7 @@ export default function ResultScreen({
         <div style={actions}>
           {onRetryWrong && (
             <button onClick={onRetryWrong} style={secondaryBtn}>
-              間違えた問題を復習
+              Review Missed Questions
             </button>
           )}
 
