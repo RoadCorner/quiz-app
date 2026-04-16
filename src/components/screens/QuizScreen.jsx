@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import FileSelector from "../selectors/FileSelector";
 import CategorySelector from "../selectors/CategorySelector";
 import QuizPlayer from "../quiz/QuizPlayer";
@@ -96,15 +96,31 @@ function normalizeQuestion(question) {
 
 export default function QuizScreen() {
   const [step, setStep] = useState("file");
-  const [allQuestions, setAllQuestions] = useState([]);
+  const [importedFiles, setImportedFiles] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
-  const [preview, setPreview] = useState([]);
   const [loadReport, setLoadReport] = useState({
     loadedFiles: 0,
     validQuestions: 0,
     invalidQuestions: 0,
     errors: [],
   });
+  const importCounterRef = useRef(0);
+
+  const allQuestions = importedFiles.flatMap((file) => file.questions);
+  const preview = allQuestions.slice(0, 5);
+  const categories = [...new Set(allQuestions.map((q) => q.category))];
+
+  useEffect(() => {
+    setSelectedCategories((prev) =>
+      prev.filter((category) => categories.includes(category)),
+    );
+  }, [categories]);
+
+  useEffect(() => {
+    if (allQuestions.length === 0) {
+      setStep("file");
+    }
+  }, [allQuestions.length]);
 
   const handleFile = async (files) => {
     const nextFiles = Array.from(files ?? []);
@@ -119,7 +135,7 @@ export default function QuizScreen() {
       invalidQuestions: 0,
       errors: [],
     };
-    const validQuestions = [];
+    const importedEntries = [];
 
     for (const file of nextFiles) {
       try {
@@ -131,6 +147,8 @@ export default function QuizScreen() {
           continue;
         }
 
+        const fileQuestions = [];
+
         json.forEach((question, index) => {
           const errors = validateQuestion(question, index, file.name);
 
@@ -141,19 +159,29 @@ export default function QuizScreen() {
           }
 
           report.validQuestions += 1;
-          validQuestions.push(normalizeQuestion(question));
+          fileQuestions.push(normalizeQuestion(question));
         });
+
+        if (fileQuestions.length > 0) {
+          importCounterRef.current += 1;
+          importedEntries.push({
+            id: `${file.name}-${file.lastModified}-${importCounterRef.current}`,
+            name: file.name,
+            questions: fileQuestions,
+          });
+        }
       } catch {
         report.errors.push(`${file.name}: failed to parse JSON.`);
       }
     }
 
-    setAllQuestions((prev) => [...prev, ...validQuestions]);
-    setPreview(validQuestions.slice(0, 5));
+    setImportedFiles((prev) => [...prev, ...importedEntries]);
     setLoadReport(report);
   };
 
-  const categories = [...new Set(allQuestions.map((q) => q.category))];
+  const handleRemoveFile = (fileId) => {
+    setImportedFiles((prev) => prev.filter((file) => file.id !== fileId));
+  };
 
   const questions = selectedCategories.length > 0
     ? allQuestions.filter((q) => selectedCategories.includes(q.category))
@@ -166,6 +194,8 @@ export default function QuizScreen() {
         count={allQuestions.length}
         preview={preview}
         loadReport={loadReport}
+        importedFiles={importedFiles}
+        onRemoveFile={handleRemoveFile}
         onNext={() => setStep("category")}
       />
     );
