@@ -10,7 +10,7 @@ export default function ExplanationPanel({ result, bonus, q }) {
           +{bonus} Speed Bonus
         </p>
       )}
-
+          
       <p>Correct: {q.choices[q.answer]}</p>
 
       {q.explanation && (
