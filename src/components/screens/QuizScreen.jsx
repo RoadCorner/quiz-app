@@ -97,7 +97,7 @@ function normalizeQuestion(question) {
 export default function QuizScreen() {
   const [step, setStep] = useState("file");
   const [allQuestions, setAllQuestions] = useState([]);
-  const [category, setCategory] = useState(null);
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [preview, setPreview] = useState([]);
   const [loadReport, setLoadReport] = useState({
     loadedFiles: 0,
@@ -155,8 +155,8 @@ export default function QuizScreen() {
 
   const categories = [...new Set(allQuestions.map((q) => q.category))];
 
-  const questions = category
-    ? allQuestions.filter((q) => q.category === category)
+  const questions = selectedCategories.length > 0
+    ? allQuestions.filter((q) => selectedCategories.includes(q.category))
     : allQuestions;
 
   if (step === "file") {
@@ -176,10 +176,9 @@ export default function QuizScreen() {
       <CategorySelector
         categories={categories}
         allQuestions={allQuestions}
-        onSelect={(cat) => {
-          setCategory(cat);
-          setStep("quiz");
-        }}
+        selectedCategories={selectedCategories}
+        onChange={setSelectedCategories}
+        onStart={() => setStep("quiz")}
         onBack={() => setStep("file")}
       />
     );
