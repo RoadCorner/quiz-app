@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ResultScreen from "../screens/ResultScreen";
 import ChoicesList from "./ChoicesList";
 import ExplanationPanel from "./ExplanationPanel";
 import QuizHeader from "./QuizHeader";
 import ComboBar from "./ComboBar";
 
-export default function QuizPlayer({ questions, onBack }) {
+export default function QuizPlayer({ questions, shuffleChoices, onBack }) {
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState(null);
   const [result, setResult] = useState(null);
@@ -22,29 +22,27 @@ export default function QuizPlayer({ questions, onBack }) {
   const audioCtxRef = useRef(null);
   const q = questions[current];
 
-  /* ===== タイマー ===== */
   useEffect(() => {
     if (finished || result !== null) return;
 
     const start = Date.now();
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setTime((Date.now() - start) / 1000);
     }, 50);
 
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, [current, result, finished]);
 
-  /* ===== Exit ===== */
   const handleExit = () => {
     setExited(true);
     setFinished(true);
   };
 
-  /* ===== Audio ===== */
   const getAudioCtx = () => {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
+
     return audioCtxRef.current;
   };
 
@@ -78,7 +76,6 @@ export default function QuizPlayer({ questions, onBack }) {
     osc.stop(ctx.currentTime + 0.3);
   };
 
-  /* ===== コンボ色 ===== */
   const getComboColor = () => {
     if (streak >= 10) return "#a855f7";
     if (streak >= 7) return "#ef4444";
@@ -87,7 +84,6 @@ export default function QuizPlayer({ questions, onBack }) {
     return "#38bdf8";
   };
 
-  /* ===== 判定 ===== */
   const check = () => {
     if (result !== null || selected === null) return;
 
@@ -95,10 +91,10 @@ export default function QuizPlayer({ questions, onBack }) {
       const speedBonus = Math.max(0, 20 - Math.floor(time / 5));
 
       setResult("Correct!");
-      setScore((s) => s + 1 + speedBonus);
-      setCorrectCount((c) => c + 1);
+      setScore((value) => value + 1 + speedBonus);
+      setCorrectCount((value) => value + 1);
       setBonus(speedBonus);
-      setStreak((s) => s + 1);
+      setStreak((value) => value + 1);
       setAnim("pop");
 
       setFlash("correct");
@@ -119,14 +115,13 @@ export default function QuizPlayer({ questions, onBack }) {
     }
   };
 
-  /* ===== 次へ ===== */
   const next = () => {
     if (current + 1 >= questions.length) {
       setFinished(true);
       return;
     }
 
-    setCurrent((c) => c + 1);
+    setCurrent((value) => value + 1);
     setSelected(null);
     setResult(null);
     setTime(0);
@@ -134,7 +129,6 @@ export default function QuizPlayer({ questions, onBack }) {
     setAnim("");
   };
 
-  /* ===== リザルト ===== */
   if (finished) {
     const answeredCount = exited
       ? current + (result !== null || selected !== null ? 1 : 0)
@@ -163,13 +157,13 @@ export default function QuizPlayer({ questions, onBack }) {
           ...(flash === "wrong" && flashWrong),
         }}
       >
-        {/* 左 */}
         <div style={left}>
           <QuizHeader
             time={time}
             score={score}
             current={current}
             total={questions.length}
+            shuffleChoices={shuffleChoices}
             onExit={handleExit}
           />
 
@@ -190,7 +184,6 @@ export default function QuizPlayer({ questions, onBack }) {
           />
         </div>
 
-        {/* 右 */}
         <div style={right}>
           <ExplanationPanel result={result} bonus={bonus} q={q} />
 
@@ -225,8 +218,6 @@ export default function QuizPlayer({ questions, onBack }) {
   );
 }
 
-/* ===== スタイル ===== */
-
 const center = {
   minHeight: "100vh",
   background: "#020617",
@@ -234,26 +225,34 @@ const center = {
   justifyContent: "center",
   alignItems: "center",
   color: "white",
+  padding: "24px",
+  boxSizing: "border-box",
 };
 
 const container = {
-  width: "1000px",
-  height: "80vh",
+  width: "1180px",
+  height: "760px",
+  maxWidth: "calc(100vw - 48px)",
+  maxHeight: "calc(100vh - 48px)",
   display: "flex",
   gap: "20px",
   background: "#1e293b",
-  padding: "20px",
-  borderRadius: "15px",
+  padding: "24px",
+  borderRadius: "20px",
+  boxShadow: "0 25px 60px rgba(0,0,0,0.5)",
+  overflow: "hidden",
 };
 
 const left = {
   flex: 1,
+  minWidth: 0,
   display: "flex",
   flexDirection: "column",
 };
 
 const right = {
   flex: 1,
+  minWidth: 0,
   display: "flex",
   flexDirection: "column",
 };

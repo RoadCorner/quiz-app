@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FileSelector from "../selectors/FileSelector";
 import CategorySelector from "../selectors/CategorySelector";
 import QuizPlayer from "../quiz/QuizPlayer";
@@ -94,10 +94,30 @@ function normalizeQuestion(question) {
   };
 }
 
+function shuffleQuestionChoices(question) {
+  const entries = question.choices.map((choice, index) => ({
+    choice,
+    isAnswer: index === question.answer,
+  }));
+
+  for (let i = entries.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [entries[i], entries[j]] = [entries[j], entries[i]];
+  }
+
+  return {
+    ...question,
+    choices: entries.map((entry) => entry.choice),
+    answer: entries.findIndex((entry) => entry.isAnswer),
+  };
+}
+
 export default function QuizScreen() {
   const [step, setStep] = useState("file");
   const [importedFiles, setImportedFiles] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [shuffleChoices, setShuffleChoices] = useState(false);
+  const [quizSession, setQuizSession] = useState(null);
   const [loadReport, setLoadReport] = useState({
     loadedFiles: 0,
     validQuestions: 0,
@@ -106,9 +126,15 @@ export default function QuizScreen() {
   });
   const importCounterRef = useRef(0);
 
-  const allQuestions = importedFiles.flatMap((file) => file.questions);
-  const preview = allQuestions.slice(0, 5);
-  const categories = [...new Set(allQuestions.map((q) => q.category))];
+  const allQuestions = useMemo(
+    () => importedFiles.flatMap((file) => file.questions),
+    [importedFiles],
+  );
+  const preview = useMemo(() => allQuestions.slice(0, 5), [allQuestions]);
+  const categories = useMemo(
+    () => [...new Set(allQuestions.map((q) => q.category))],
+    [allQuestions],
+  );
 
   useEffect(() => {
     setSelectedCategories((prev) =>
@@ -183,9 +209,25 @@ export default function QuizScreen() {
     setImportedFiles((prev) => prev.filter((file) => file.id !== fileId));
   };
 
-  const questions = selectedCategories.length > 0
-    ? allQuestions.filter((q) => selectedCategories.includes(q.category))
-    : allQuestions;
+  const handleStartQuiz = () => {
+    const sessionQuestions = shuffleChoices
+      ? questions.map((question) => shuffleQuestionChoices(question))
+      : questions;
+
+    setQuizSession({
+      id: `${Date.now()}-${sessionQuestions.length}`,
+      questions: sessionQuestions,
+      shuffleChoices,
+    });
+    setStep("quiz");
+  };
+
+  const questions = useMemo(
+    () => (selectedCategories.length > 0
+      ? allQuestions.filter((q) => selectedCategories.includes(q.category))
+      : allQuestions),
+    [allQuestions, selectedCategories],
+  );
 
   if (step === "file") {
     return (
@@ -207,8 +249,10 @@ export default function QuizScreen() {
         categories={categories}
         allQuestions={allQuestions}
         selectedCategories={selectedCategories}
+        shuffleChoices={shuffleChoices}
         onChange={setSelectedCategories}
-        onStart={() => setStep("quiz")}
+        onShuffleChange={setShuffleChoices}
+        onStart={handleStartQuiz}
         onBack={() => setStep("file")}
       />
     );
@@ -216,7 +260,9 @@ export default function QuizScreen() {
 
   return (
     <QuizPlayer
-      questions={questions}
+      key={quizSession?.id ?? "quiz"}
+      questions={quizSession?.questions ?? questions}
+      shuffleChoices={quizSession?.shuffleChoices ?? shuffleChoices}
       onFinish={() => setStep("file")}
       onBack={() => setStep("category")}
     />
