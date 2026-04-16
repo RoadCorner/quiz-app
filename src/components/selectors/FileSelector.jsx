@@ -1,61 +1,43 @@
 import { useState } from "react";
 
-export default function FileSelector({ onLoad, count, onNext }) {
-  const [preview, setPreview] = useState([]);
+export default function FileSelector({
+  onLoad,
+  count,
+  onNext,
+  preview,
+  loadReport,
+}) {
   const [copied, setCopied] = useState(false);
   const [dragging, setDragging] = useState(false);
 
   const processFiles = (files) => {
-    let loaded = [];
-
-    files.forEach((file) => {
-      const reader = new FileReader();
-
-      reader.onload = (event) => {
-        try {
-          const json = JSON.parse(event.target.result);
-
-          if (Array.isArray(json)) {
-            loaded = [...loaded, ...json];
-            setPreview(loaded.slice(0, 5));
-          }
-        } catch {
-          console.error("JSON error");
-        }
-      };
-
-      reader.readAsText(file);
-    });
-
-    onLoad({ target: { files } });
+    onLoad(files);
   };
 
   const handleCopy = async () => {
-  try {
-    await navigator.clipboard.writeText(template);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(template);
+      setCopied(true);
 
-    setTimeout(() => setCopied(false), 1500);
-  } catch (err) {
-    console.error("Copy failed", err);
-  }
-};
+      setTimeout(() => setCopied(false), 1500);
+    } catch (err) {
+      console.error("Copy failed", err);
+    }
+  };
 
+  const hasLoadAttempt = loadReport.loadedFiles > 0;
+  const visibleErrors = loadReport.errors.slice(0, 5);
 
   return (
     <div style={center}>
       <div style={card}>
-
-        {/* ===== 左 ===== */}
         <div style={left}>
-
           <div style={header}>
             <h2 style={{ margin: 0 }}>Select JSON</h2>
           </div>
 
           <div style={divider} />
 
-          {/* ドロップ */}
           <label
             style={{
               ...dropArea,
@@ -79,16 +61,48 @@ export default function FileSelector({ onLoad, count, onNext }) {
               multiple
               accept=".json"
               hidden
-              onChange={(e) =>
-                processFiles(Array.from(e.target.files))
-              }
+              onChange={(e) => processFiles(Array.from(e.target.files ?? []))}
             />
-            <p>
-              {dragging ? "Drop here" : "Click or Drop JSON"}
-            </p>
+            <p>{dragging ? "Drop here" : "Click or Drop JSON"}</p>
           </label>
 
-          {/* Preview */}
+          <div style={statusBox}>
+            <p>
+              Valid questions loaded: <strong>{count}</strong>
+            </p>
+
+            {hasLoadAttempt && (
+              <p>
+                Last import: {loadReport.validQuestions} valid,{" "}
+                {loadReport.invalidQuestions} invalid from {loadReport.loadedFiles} file
+                {loadReport.loadedFiles === 1 ? "" : "s"}
+              </p>
+            )}
+
+            {count === 0 && (
+              <p style={warningText}>
+                Add at least one valid question set before starting the quiz.
+              </p>
+            )}
+          </div>
+
+          {visibleErrors.length > 0 && (
+            <div style={errorBox}>
+              <strong>Import issues</strong>
+              <ul style={errorList}>
+                {visibleErrors.map((error, index) => (
+                  <li key={`${error}-${index}`}>{error}</li>
+                ))}
+              </ul>
+              {loadReport.errors.length > visibleErrors.length && (
+                <p style={moreText}>
+                  +{loadReport.errors.length - visibleErrors.length} more issue
+                  {loadReport.errors.length - visibleErrors.length === 1 ? "" : "s"}
+                </p>
+              )}
+            </div>
+          )}
+
           <div style={previewBox}>
             {preview.map((q, i) => (
               <div key={i} style={previewCard}>
@@ -96,6 +110,12 @@ export default function FileSelector({ onLoad, count, onNext }) {
                 <div style={qCat}>{q.category}</div>
               </div>
             ))}
+
+            {preview.length === 0 && (
+              <div style={emptyPreview}>
+                Valid question previews will appear here after import.
+              </div>
+            )}
           </div>
 
           <button
@@ -110,9 +130,7 @@ export default function FileSelector({ onLoad, count, onNext }) {
           </button>
         </div>
 
-        {/* ===== 右 ===== */}
         <div style={right}>
-
           <div style={header}>
             <h3 style={{ margin: 0 }}>Guide</h3>
           </div>
@@ -120,10 +138,10 @@ export default function FileSelector({ onLoad, count, onNext }) {
           <div style={divider} />
 
           <div style={guideBox}>
-            <p>1.Upload JSON file</p>
-            <p>2.System make quiz automaticaly</p>
-            <p>3.Start Quiz</p>
-            <p>Copy&Paste this prompt to your AI to create quiz</p>
+            <p>1. Upload one or more JSON files.</p>
+            <p>2. We validate each question before adding it.</p>
+            <p>3. Start after at least one valid question is loaded.</p>
+            <p>Copy this prompt into your AI to generate quiz data.</p>
           </div>
 
           <div style={divider} />
@@ -154,13 +172,10 @@ export default function FileSelector({ onLoad, count, onNext }) {
             {copied ? "Copied!" : "Copy"}
           </button>
         </div>
-
       </div>
     </div>
   );
 }
-
-/* ===== UI（Quizと統一） ===== */
 
 const center = {
   minHeight: "100vh",
@@ -213,10 +228,50 @@ const dropArea = {
   cursor: "pointer",
 };
 
+const statusBox = {
+  marginTop: "15px",
+  textAlign: "left",
+  fontSize: "14px",
+  lineHeight: "1.6",
+  color: "#cbd5e1",
+};
+
+const warningText = {
+  color: "#fbbf24",
+};
+
+const errorBox = {
+  marginTop: "15px",
+  background: "rgba(239,68,68,0.12)",
+  border: "1px solid rgba(248,113,113,0.45)",
+  borderRadius: "10px",
+  padding: "12px",
+  textAlign: "left",
+};
+
+const errorList = {
+  margin: "8px 0 0",
+  paddingLeft: "18px",
+  color: "#fecaca",
+};
+
+const moreText = {
+  marginTop: "8px",
+  fontSize: "12px",
+  color: "#fecaca",
+};
+
 const previewBox = {
   marginTop: "15px",
   flex: 1,
   overflowY: "auto",
+};
+
+const emptyPreview = {
+  padding: "14px",
+  background: "#020617",
+  borderRadius: "8px",
+  color: "#94a3b8",
 };
 
 const previewCard = {
@@ -245,7 +300,7 @@ const mainBtn = {
 };
 
 const guideBox = {
-   textAlign: "left",
+  textAlign: "left",
   opacity: 0.8,
 };
 
