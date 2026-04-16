@@ -5,42 +5,78 @@ import ExplanationPanel from "./ExplanationPanel";
 import QuizHeader from "./QuizHeader";
 import ComboBar from "./ComboBar";
 
+function createSessionState(sessionQuestions, reviewMode = false) {
+  return {
+    activeQuestions: sessionQuestions,
+    current: 0,
+    selected: null,
+    result: null,
+    score: 0,
+    streak: 0,
+    correctCount: 0,
+    time: 0,
+    bonus: 0,
+    anim: "",
+    finished: false,
+    flash: "",
+    exited: false,
+    wrongQuestions: [],
+    isReviewMode: reviewMode,
+  };
+}
+
 export default function QuizPlayer({
   questions,
   shuffleChoices,
   shuffleQuestionsOrder,
   onBack,
 }) {
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState(null);
-  const [result, setResult] = useState(null);
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [time, setTime] = useState(0);
-  const [bonus, setBonus] = useState(0);
-  const [anim, setAnim] = useState("");
-  const [finished, setFinished] = useState(false);
-  const [flash, setFlash] = useState("");
-  const [exited, setExited] = useState(false);
+  const [session, setSession] = useState(() => createSessionState(questions));
 
   const audioCtxRef = useRef(null);
-  const q = questions[current];
+  const {
+    activeQuestions,
+    current,
+    selected,
+    result,
+    score,
+    streak,
+    correctCount,
+    time,
+    bonus,
+    anim,
+    finished,
+    flash,
+    exited,
+    wrongQuestions,
+    isReviewMode,
+  } = session;
+  const q = activeQuestions[current];
+
+  useEffect(() => {
+    setSession(createSessionState(questions));
+  }, [questions]);
 
   useEffect(() => {
     if (finished || result !== null) return;
 
     const start = Date.now();
     const timer = setInterval(() => {
-      setTime((Date.now() - start) / 1000);
+      setSession((prev) => ({
+        ...prev,
+        time: (Date.now() - start) / 1000,
+      }));
     }, 50);
 
     return () => clearInterval(timer);
   }, [current, result, finished]);
 
   const handleExit = () => {
-    setExited(true);
-    setFinished(true);
+    setSession((prev) => ({
+      ...prev,
+      exited: true,
+      finished: true,
+    }));
   };
 
   const getAudioCtx = () => {
@@ -90,63 +126,93 @@ export default function QuizPlayer({
   };
 
   const check = () => {
-    if (result !== null || selected === null) return;
+    if (result !== null || selected === null || !q) return;
 
     if (selected === q.answer) {
       const speedBonus = Math.max(0, 20 - Math.floor(time / 5));
 
-      setResult("Correct!");
-      setScore((value) => value + 1 + speedBonus);
-      setCorrectCount((value) => value + 1);
-      setBonus(speedBonus);
-      setStreak((value) => value + 1);
-      setAnim("pop");
-
-      setFlash("correct");
-      setTimeout(() => setFlash(""), 200);
+      setSession((prev) => ({
+        ...prev,
+        result: "Correct!",
+        score: prev.score + 1 + speedBonus,
+        correctCount: prev.correctCount + 1,
+        bonus: speedBonus,
+        streak: prev.streak + 1,
+        anim: "pop",
+        flash: "correct",
+      }));
+      setTimeout(() => {
+        setSession((prev) => ({
+          ...prev,
+          flash: "",
+        }));
+      }, 200);
 
       play("correct");
       setTimeout(() => play("correct"), 120);
       setTimeout(() => play("correct"), 240);
     } else {
-      setResult("Wrong");
-      setStreak(0);
-      setAnim("shake");
-
-      setFlash("wrong");
-      setTimeout(() => setFlash(""), 200);
+      setSession((prev) => ({
+        ...prev,
+        result: "Wrong",
+        streak: 0,
+        anim: "shake",
+        flash: "wrong",
+        wrongQuestions: [...prev.wrongQuestions, q],
+      }));
+      setTimeout(() => {
+        setSession((prev) => ({
+          ...prev,
+          flash: "",
+        }));
+      }, 200);
 
       play("wrong");
     }
   };
 
   const next = () => {
-    if (current + 1 >= questions.length) {
-      setFinished(true);
+    if (current + 1 >= activeQuestions.length) {
+      setSession((prev) => ({
+        ...prev,
+        finished: true,
+      }));
       return;
     }
 
-    setCurrent((value) => value + 1);
-    setSelected(null);
-    setResult(null);
-    setTime(0);
-    setBonus(0);
-    setAnim("");
+    setSession((prev) => ({
+      ...prev,
+      current: prev.current + 1,
+      selected: null,
+      result: null,
+      time: 0,
+      bonus: 0,
+      anim: "",
+    }));
+  };
+
+  const restartWithWrongQuestions = () => {
+    if (wrongQuestions.length === 0) return;
+
+    setSession(createSessionState(wrongQuestions, true));
   };
 
   if (finished) {
     const answeredCount = exited
       ? current + (result !== null || selected !== null ? 1 : 0)
-      : questions.length;
+      : activeQuestions.length;
 
     return (
       <ResultScreen
         score={score}
         correct={correctCount}
         total={answeredCount}
-        fullTotal={questions.length}
+        fullTotal={activeQuestions.length}
         exited={exited}
+        isReviewMode={isReviewMode}
+        reviewCount={wrongQuestions.length}
         onBack={onBack}
+        onRetryWrong={wrongQuestions.length > 0 ? restartWithWrongQuestions : null}
       />
     );
   }
@@ -167,7 +233,7 @@ export default function QuizPlayer({
             time={time}
             score={score}
             current={current}
-            total={questions.length}
+            total={activeQuestions.length}
             shuffleChoices={shuffleChoices}
             shuffleQuestionsOrder={shuffleQuestionsOrder}
             onExit={handleExit}
@@ -186,7 +252,12 @@ export default function QuizPlayer({
             selected={selected}
             result={result}
             answer={q.answer}
-            onSelect={setSelected}
+            onSelect={(value) => {
+              setSession((prev) => ({
+                ...prev,
+                selected: value,
+              }));
+            }}
           />
         </div>
 

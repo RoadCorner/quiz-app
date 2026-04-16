@@ -4,7 +4,10 @@ export default function ResultScreen({
   total,
   fullTotal,
   exited,
+  isReviewMode,
+  reviewCount,
   onBack,
+  onRetryWrong,
 }) {
   const accuracy =
     total > 0 && correct != null
@@ -28,7 +31,9 @@ export default function ResultScreen({
   return (
     <div style={center}>
       <div style={box}>
-        <h1 style={title}>{exited ? "Quiz Ended" : "Result"}</h1>
+        <h1 style={title}>
+          {exited ? "Quiz Ended" : isReviewMode ? "Review Result" : "Result"}
+        </h1>
 
         <div style={scoreBox}>
           <p style={label}>Score</p>
@@ -39,9 +44,13 @@ export default function ResultScreen({
           <p>Correct: {correct} / {total}</p>
           <p>Accuracy: {accuracy}%</p>
 
+          {!exited && reviewCount > 0 && (
+            <p style={reviewText}>間違えた {reviewCount} 問を復習できます。</p>
+          )}
+
           {exited && (
             <p style={exitText}>
-              途中終了: 全 {fullTotal} 問中、{total} 問時点の結果です
+              全 {fullTotal} 問中、{total} 問回答した時点で終了しました。
             </p>
           )}
         </div>
@@ -56,15 +65,21 @@ export default function ResultScreen({
           {getRank()}
         </div>
 
-        <button onClick={onBack} style={btn}>
-          Back
-        </button>
+        <div style={actions}>
+          {onRetryWrong && (
+            <button onClick={onRetryWrong} style={secondaryBtn}>
+              間違えた問題を復習
+            </button>
+          )}
+
+          <button onClick={onBack} style={btn}>
+            Back
+          </button>
+        </div>
       </div>
     </div>
   );
 }
-
-/* ===== スタイル ===== */
 
 const center = {
   minHeight: "100vh",
@@ -111,6 +126,11 @@ const statBox = {
   lineHeight: "1.6",
 };
 
+const reviewText = {
+  color: "#38bdf8",
+  fontSize: "14px",
+};
+
 const exitText = {
   color: "#facc15",
   fontSize: "14px",
@@ -125,10 +145,25 @@ const rankBox = {
   padding: "10px",
 };
 
-const btn = {
+const actions = {
   marginTop: "20px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+};
+
+const btn = {
   padding: "12px",
   background: "#64748b",
+  borderRadius: "10px",
+  color: "white",
+  cursor: "pointer",
+  border: "none",
+};
+
+const secondaryBtn = {
+  padding: "12px",
+  background: "#0f766e",
   borderRadius: "10px",
   color: "white",
   cursor: "pointer",
